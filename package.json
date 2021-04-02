@@ -1,0 +1,8 @@
+{
+  "name": "aws-lambda-authorizer",
+  "version": "1.0.0",
+  "main": "app.js",
+  "repository": "https://github.com/mboisnard/aws-lambda-authorizer",
+  "author": "Mathieu Boisnard <mathieu.boisnard@lacombedulionvert.fr>",
+  "license": "MIT"
+}
