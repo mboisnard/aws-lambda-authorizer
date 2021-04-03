@@ -25,7 +25,6 @@ const Action = {
     EXECUTE_API: 'execute-api:Invoke'
 };
 
-// Arn format: 'arn:aws:execute-api:eu-west-1:123456789102:vjpmhhtdi6/dev/GET/test'
 const authPolicyFromEvent = function(event, principalId) {
 
     const arn = event.version === Payload.VERSION_1
@@ -33,10 +32,26 @@ const authPolicyFromEvent = function(event, principalId) {
         : event.routeArn;
 
     if (!arn) {
-        throw new Error('Invalid arn. Check your event format.');
+        throw new Error('Arn not found. Check your event format.');
     }
 
+    const infos = extractInfosFromArn(arn);
+
+    return authPolicy(principalId, infos.awsAccountId, {
+        region: infos.region,
+        restApiId: infos.apiGateway.restApiId,
+        stage: infos.apiGateway.stage
+    });
+};
+
+// Arn format: 'arn:aws:execute-api:eu-west-1:123456789102:vjpmhhtdi6/dev/GET/test'
+const extractInfosFromArn = arn => {
+
     const parts = arn.split(':');
+
+    if (parts.length < 6) {
+        throw new Error('Invalid arn format');
+    }
 
     const regionPart = parts[3];
     const awsAccountIdPart = parts[4];
@@ -44,12 +59,15 @@ const authPolicyFromEvent = function(event, principalId) {
     const apiGatewayRestApiIdPart = apiGatewayArnParts[0];
     const apiGatewayStagePart = apiGatewayArnParts[1];
 
-    return authPolicy(principalId, awsAccountIdPart, {
+    return {
         region: regionPart,
-        restApiId: apiGatewayRestApiIdPart,
-        stage: apiGatewayStagePart
-    });
-};
+        awsAccountId: awsAccountIdPart,
+        apiGateway: {
+            restApiId: apiGatewayRestApiIdPart,
+            stage: apiGatewayStagePart
+        }
+    };
+}
 
 const authPolicy = function(_principalId, _awsAccountId, apiOptions) {
 

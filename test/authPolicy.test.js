@@ -1,9 +1,11 @@
 const assert = require('assert');
+const authPolicyBuilder = require('../src/authPolicy');
 
-describe('AuthPolicy', function() {
-    describe('#indexOf()', function() {
-        it('should return -1 when the value is not present', function() {
-            assert.equal([1, 2, 3].indexOf(4), -1);
+describe('authPolicy', () => {
+
+    describe('authPolicyFromEvent', () => {
+        it('should throw error when event has wrong format', () => {
+            assert.throws(() => authPolicyBuilder.authPolicyFromEvent({}, '1234'), Error);
         });
     });
 });
