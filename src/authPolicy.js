@@ -98,7 +98,7 @@ const authPolicy = function(_principalId, _awsAccountId, apiOptions) {
 
     const addMethod = (effect, verb, resource, conditions) => {
 
-        if (!HttpVerb[verb]) {
+        if (!HttpVerb[verb] && verb !== ALL_RESOURCES) {
             throw new Error(`Invalid HTTP verb ${verb}. Allowed verbs in HttpVerb enum.`);
         }
 
@@ -110,8 +110,8 @@ const authPolicy = function(_principalId, _awsAccountId, apiOptions) {
         const resourceArn = `arn:aws:execute-api:${region}:${awsAccountId}:${restApiId}/${stage}/${verb}/${formatResource(resource)}`;
 
         const method = {
-            resourceArn,
-            conditions,
+            resourceArn: resourceArn,
+            conditions: conditions,
 
             hasConditions: () => conditions && conditions.length !== 0
         };
