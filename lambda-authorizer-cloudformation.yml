@@ -1,0 +1,108 @@
+Resources:
+
+#### Lambda Authorizer ####
+  LambdaAuthorizerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: lambda-authorizer-execution-role
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: '*'
+          PolicyName: lambda-authorizer-execution-policy
+
+  LambdaAuthorizerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: lambda-authorizer
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Role: !GetAtt LambdaAuthorizerExecutionRole.Arn
+      Code:
+        ZipFile: !Sub |
+          exports.handler = function(event, context) {
+            console.log('upload quicksight cognito code & update nodejs version to nodejs14.x');
+          };
+
+  LambdaApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaAuthorizerFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+
+  LambdaAuthorizerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${LambdaAuthorizerFunction}'
+      RetentionInDays: 1
+#### ####
+
+#### API Gateway ####
+  APIGatewayHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: sample-secured-app-gateway
+      Description: Sample API using the lambda authorizer
+      ProtocolType: HTTP
+
+  APIGatewayLambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref APIGatewayHttpApi
+      IntegrationType: HTTP_PROXY
+      IntegrationMethod: "ANY"
+      IntegrationUri: "https://google.com"
+      PayloadFormatVersion: 1.0
+
+  APIGatewayAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref APIGatewayHttpApi
+      AuthorizerType: REQUEST
+      AuthorizerPayloadFormatVersion: 2.0
+      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaAuthorizerFunction.Arn}/invocations'
+      IdentitySource:
+        - "$request.header.Authorization"
+      Name: LambdaAuthorizer
+
+  APIGatewayGetRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref APIGatewayHttpApi
+      RouteKey: 'GET /sample'
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref APIGatewayAuthorizer
+      Target: !Sub 'integrations/${APIGatewayLambdaIntegration}'
+
+  APIGatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: api-gateway-log-grp
+      RetentionInDays: 1
+
+  APIGatewayDevStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      StageName: Dev
+      Description: Dev Stage
+      AccessLogSettings:
+        DestinationArn: !GetAtt APIGatewayLogGroup.Arn
+        Format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","routeKey":"$context.routeKey", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength", "integrationError":"$context.integrationErrorMessage" }'
+      AutoDeploy: true
+      ApiId: !Ref APIGatewayHttpApi
