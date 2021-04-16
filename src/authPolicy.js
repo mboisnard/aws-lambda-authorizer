@@ -1,8 +1,3 @@
-const Payload = {
-    VERSION_1: '1.0',
-    VERSION_2: '2.0'
-};
-
 const ALL_RESOURCES = '*';
 
 const HttpVerb = {
@@ -21,11 +16,36 @@ const Effect = {
     DENY: 'Deny'
 };
 
-const Action = {
-    EXECUTE_API: 'execute-api:Invoke'
-};
-
 const authPolicyFromEvent = function(event, principalId) {
+
+    const Payload = {
+        VERSION_1: '1.0',
+        VERSION_2: '2.0'
+    };
+
+    // Arn format: 'arn:aws:execute-api:eu-west-1:123456789102:vjpmhhtdi6/dev/GET/test'
+    const extractInfosFromArn = arn => {
+        const parts = arn.split(':');
+
+        if (parts.length < 6) {
+            throw new Error('Invalid arn format');
+        }
+
+        const regionPart = parts[3];
+        const awsAccountIdPart = parts[4];
+        const apiGatewayArnParts = parts[5].split('/');
+        const apiGatewayRestApiIdPart = apiGatewayArnParts[0];
+        const apiGatewayStagePart = apiGatewayArnParts[1];
+
+        return {
+            region: regionPart,
+            awsAccountId: awsAccountIdPart,
+            apiGateway: {
+                restApiId: apiGatewayRestApiIdPart,
+                stage: apiGatewayStagePart
+            }
+        };
+    };
 
     const arn = event.version === Payload.VERSION_1
         ? event.methodArn
@@ -43,31 +63,6 @@ const authPolicyFromEvent = function(event, principalId) {
         stage: infos.apiGateway.stage
     });
 };
-
-// Arn format: 'arn:aws:execute-api:eu-west-1:123456789102:vjpmhhtdi6/dev/GET/test'
-const extractInfosFromArn = arn => {
-
-    const parts = arn.split(':');
-
-    if (parts.length < 6) {
-        throw new Error('Invalid arn format');
-    }
-
-    const regionPart = parts[3];
-    const awsAccountIdPart = parts[4];
-    const apiGatewayArnParts = parts[5].split('/');
-    const apiGatewayRestApiIdPart = apiGatewayArnParts[0];
-    const apiGatewayStagePart = apiGatewayArnParts[1];
-
-    return {
-        region: regionPart,
-        awsAccountId: awsAccountIdPart,
-        apiGateway: {
-            restApiId: apiGatewayRestApiIdPart,
-            stage: apiGatewayStagePart
-        }
-    };
-}
 
 const authPolicy = function(_principalId, _awsAccountId, apiOptions) {
 
@@ -87,8 +82,11 @@ const authPolicy = function(_principalId, _awsAccountId, apiOptions) {
 
     let context = {};
 
-    const formatResource = resource => {
+    const Action = {
+        EXECUTE_API: 'execute-api:Invoke'
+    };
 
+    const formatResource = resource => {
         if (resource.startsWith('/')) {
             return resource.substring(1, resource.length);
         }
@@ -97,7 +95,6 @@ const authPolicy = function(_principalId, _awsAccountId, apiOptions) {
     };
 
     const addMethod = (effect, verb, resource, conditions) => {
-
         if (!HttpVerb[verb] && verb !== ALL_RESOURCES) {
             throw new Error(`Invalid HTTP verb ${verb}. Allowed verbs in HttpVerb enum.`);
         }
@@ -227,7 +224,7 @@ const authPolicy = function(_principalId, _awsAccountId, apiOptions) {
             };
         }
     };
-}
+};
 
 module.exports = {
     authPolicyFromEvent,
