@@ -226,9 +226,9 @@ const authPolicy = function(_principalId, _awsAccountId, apiOptions) {
     };
 };
 
-module.exports = {
+export {
     authPolicyFromEvent,
     authPolicy,
     HttpVerb,
     Effect
-}
+};
