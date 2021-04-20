@@ -16,12 +16,12 @@ const Effect = {
     DENY: 'Deny'
 };
 
-const authPolicyFromEvent = function(event, principalId) {
+const Payload = {
+    VERSION_1: '1.0',
+    VERSION_2: '2.0'
+};
 
-    const Payload = {
-        VERSION_1: '1.0',
-        VERSION_2: '2.0'
-    };
+const authPolicyFromEvent = function(event, principalId) {
 
     // Arn format: 'arn:aws:execute-api:eu-west-1:123456789102:vjpmhhtdi6/dev/GET/test'
     const extractInfosFromArn = arn => {
@@ -230,5 +230,6 @@ export {
     authPolicyFromEvent,
     authPolicy,
     HttpVerb,
-    Effect
+    Effect,
+    Payload
 };
